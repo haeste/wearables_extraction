@@ -109,20 +109,13 @@ def read_Empatica_DBM(filepath, var):
 LYS_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S017/Lys/thorntonchristopher19gmail.com_2024-09-27_2024-10-21.csv'
 CBT_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S017/CORE/S017_CBT_cloud.csv'
 EMPATICA_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S017/Empatica/'
-LYS_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S013/Lys/CN001_LysDataTwoWeeks.csv'
-EMPATICA_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S013/Empatica'
-CBT_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S013/CORE/CN001_CBT.csv'
 
-LYS_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/S013/Lys/CN001_LysDataTwoWeeks.csv'
-CBT_DATA = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23/CN02/CN002_CBT.csv'
 
 # Specify the start and end times of the control week
 # Must start and end at exactly 00:00
 WEEK_ONE_START = '2024-09-28T00:00'
 WEEK_ONE_END = '2024-10-05T00:00'
 
-WEEK_ONE_START = '2024-06-07T00:00'
-WEEK_ONE_END = '2024-06-14T00:00'
 # Set to True if you are running this after only week one, to get initial recommended PA time.
 FIRST_WEEK_ONLY = False
 
@@ -131,8 +124,6 @@ FIRST_WEEK_ONLY = False
 WEEK_TWO_START = '2024-10-06T00:00'
 WEEK_TWO_END = '2024-10-13T00:00'
 
-WEEK_TWO_START = '2024-06-14T00:00'
-WEEK_TWO_END = '2024-06-21T00:00'
 
 
 #%% Load light exposure and movement data 

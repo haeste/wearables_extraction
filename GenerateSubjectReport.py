@@ -115,10 +115,10 @@ def addCircadianComponent(df_meas, meas, sf):
 #%%
 from importlib import reload
 reload(file_reading)
-report_folder = '/home/campus.ncl.ac.uk/nct76/Documents/Data/CNNP_Biorhtyhms/S017/report/'
+report_folder = '/home/campus.ncl.ac.uk/nct76/Documents/Data/CNNP_Biorhtyhms/S019/report/'
 data_dir = '/home/campus.ncl.ac.uk/nct76/Documents/Data/CNNP_Biorhtyhms/'
 #data_dir = '/Users/nct76/Library/CloudStorage/OneDrive-NewcastleUniversity/CNNP_pilot_winter23'
-subj = 'S017'
+subj = 'S019'
 #subjects = ['S002']
 EMPATICA = True
 CGM = False
