@@ -244,7 +244,7 @@ posteriormodel = pyhsmm.models.WeakLimitHDPHSMM(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-posteriormodel.add_data(data,trunc=60)
+posteriormodel.add_data(data,trunc=10)
 
 models = []
 for idx in range(0,500):

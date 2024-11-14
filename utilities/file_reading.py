@@ -18,21 +18,50 @@ import proj_funcs.FilterEEG as filter_funcs
 import proj_funcs.cycles_funcs as cycles_funcs
 import biorhythms
 import more_itertools as mit
+from avro.datafile import DataFileReader
+from avro.io import DatumReader
 
 def read_Empatica_DBM(filepath, var):
+    
     dbm_files = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(filepath)) for f in fn if f.endswith(var+'.csv')]
     df_dbm = pd.DataFrame()
+    if len(dbm_files) == 0:
+        raise FileNotFoundError('No Empatica files found at ' + filepath + ' with values ' + var)
+        
     for f in dbm_files:
-        print(f)
         df_i = pd.read_csv(f)
         df_dbm = pd.concat([df_dbm, df_i])
+    
     df_dbm['t'] = pd.to_datetime(df_dbm.timestamp_unix, unit='ms')
+    
     df_dbm.sort_values(by='t', ascending=True, inplace=True)
     df_dbm.reset_index(inplace=True,drop=True)
     return df_dbm
 
-def read_cgm(filepath):
+def correct_Empatica_Offset(df, meta_path):
+    meta = pd.read_csv(meta_path)
+    meta['t'] = pd.to_datetime(meta.timestamp_unix, unit='ms')
+    meta = meta[meta.time_offset.notna()]
+    seconds_offset = meta.time_offset
+    for i in range(len(meta)):
+        start = np.datetime64(pd.to_datetime(meta.iloc[i,0], unit='ms')).astype('datetime64[s]')
+        if i+1<len(meta):
+            end = np.datetime64(pd.to_datetime(meta.iloc[i+1,0], unit='ms')).astype('datetime64[s]')
+        else:
+            end = max(df.t)
+        shift = np.timedelta64(int(meta.iloc[i,2]), 's')
+        shift_min = str(shift.astype('timedelta64[m]'))
+        print('Timezone change: ' + str(start) + ' to ' + str(end) + ' [' +shift_min + ']')
+        if shift >0:
+            df.loc[(df.t>=start) & (df.t<=end), 't'] = df.loc[(df.t>=start) & (df.t<=end), 't'] +  shift
+        elif shift <0:
+            df.loc[(df.t>=start) & (df.t<=end), 't'] = df.loc[(df.t>=start) & (df.t<=end), 't'] +  shift
+            #df.loc[(df.t>start) & (df.t<=end), 't'] = df.loc[(df.t>start) & (df.t<=end), 't'] -  shift
+    df.sort_values(by='t', ascending=True, inplace=True)
+    return df
     
+
+def read_cgm(filepath):
     cgm_files = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(filepath)) for f in fn if f.endswith('.csv')]
     df_cgm = pd.DataFrame()
     for f in cgm_files:
@@ -44,14 +73,24 @@ def read_cgm(filepath):
         df_i = df_i[['Device Timestamp', 'glucose']]
         df_i.dropna(subset=['glucose'], inplace=True)
         df_cgm = pd.concat([df_cgm, df_i])
-    df_cgm['t'] = pd.to_datetime(df_cgm['Device Timestamp'])
+    df_cgm['t'] = pd.to_datetime(df_cgm['Device Timestamp'], dayfirst=True)
     df_cgm = df_cgm[['t', 'glucose']]
+    df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-01T15:30:00')) & (df_cgm.t<np.datetime64('2023-11-04T18:10:00')), 't'] = df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-01T15:30:00')) & (df_cgm.t<np.datetime64('2023-11-04T18:10:00')), 't'] - np.timedelta64(1, 'h')
+    df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-29T07:10:00')) & (df_cgm.t<np.datetime64('2023-11-29T22:10:00')), 't'] = df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-29T07:10:00')) & (df_cgm.t<np.datetime64('2023-11-29T22:10:00')), 't'] - np.timedelta64(1, 'h')
+    df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-29T22:10:00')) & (df_cgm.t<np.datetime64('2023-12-07T09:00:00')), 't'] = df_cgm.loc[(df_cgm.t>np.datetime64('2023-11-29T22:10:00')) & (df_cgm.t<np.datetime64('2023-12-07T09:00:00')), 't'] + np.timedelta64(5, 'h')
     df_cgm.sort_values(by='t', ascending=True, inplace=True)
     df_cgm = df_cgm.set_index('t')
     df_cgm = df_cgm.resample('15T').mean()
     return df_cgm
 
 def get_ethica_diary(filepath):
+    ethica_sub = pd.read_csv(filepath)
+    ethica_sub['t'] = pd.to_datetime(ethica_sub['Record Time'],utc=True, format='mixed')
+    ethica_sub['t'] = ethica_sub.t.dt.tz_localize(None)
+    ethica_sub['t'] = ethica_sub['t'].dt.round('min')
+    return ethica_sub
+
+def get_ethica_sleep(filepath):
     ethica_sub = pd.read_csv(filepath)
     ethica_sub['t'] = pd.to_datetime(ethica_sub['Record Time'],utc=True, format='mixed')
     ethica_sub['t'] = ethica_sub.t.dt.tz_localize(None)
@@ -109,10 +148,11 @@ def read_Bittium_Data(filepath):
 
     count = 0
     for i in range(0,len(hrv_times)-1):
-        filler = np.arange(start=hrv_times[i+count][-1] + hrv_si, stop=hrv_times[i+count+1][0], step=hrv_si, dtype='datetime64[ns]')
+        filler = np.arange(start=hrv_times[i+count][-1] + hrv_si, stop=hrv_times[i+count+1][0], step=hrv_si, dtype='datetime64[ms]')
         count = count+1
         hrv_times.insert(i+count, filler)
-
+        hrvs_filler = np.empty(filler.shape)
+        hrvs.insert(i+count,hrvs_filler)
         # add to the start of the list if it occurs before all previous
 
     ecg_times = np.concatenate(ecg_times, axis=0)
@@ -175,4 +215,17 @@ def loadBFEDF(filename):
         return [(ecg, ecg_t_ms),(hrv, hrv_t_ms), (accX, accX_t_ms), (accY, accY_t_ms), (accZ, accZ_t_ms)]
     return [(ecg, ecg_t_ms), (hrv, hrv_t_ms), ([], []), ([], []), ([], [])]
 
+def load_CBT_cloud(filename):
     
+    cbt_data_all = pd.read_csv(filename, sep=';', skiprows=1)
+    cbt_data_all['t'] = pd.to_datetime(cbt_data_all.date_time_local, dayfirst=True)
+    cbt_data_all.set_index('t')
+    
+    cbt_data_all['CBT'] = cbt_data_all['core_temperature [C]']
+    cbt_data_all['ST'] = cbt_data_all['skin_temperature [C]']
+
+    cbt_data_all = cbt_data_all.set_index('t')
+    cbt_data = cbt_data_all[['CBT', 'ST']]
+    cbt_data = cbt_data.resample('1T').median()
+    
+    return cbt_data

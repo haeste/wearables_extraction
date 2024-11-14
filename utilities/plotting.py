@@ -19,6 +19,12 @@ import proj_funcs.FilterEEG as filter_funcs
 import proj_funcs.cycles_funcs as cycles_funcs
 import biorhythms
 
+def plot_all_features(df,feats):
+    for i in range(len(feats)):
+        plt.subplot(len(feats)+1, 1,i+1)
+        plt.plot(df.t,df[feats[i]])
+        plt.ylabel(feats[i])
+    plt.xlabel('t')
 def compare_subjects():
     
     pr002['t0'] = pr002.t
